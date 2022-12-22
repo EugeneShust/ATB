@@ -1643,57 +1643,33 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     ) internal virtual {}
 }
 
-
-library Counters {
-    struct Counter {
-        uint256 _value; // default: 0
-    }
-
-    function current(Counter storage counter) internal view returns (uint256) {
-        return counter._value;
-    }
-
-    function increment(Counter storage counter) internal {
-        unchecked {
-            counter._value += 1;
-        }
-    }
-
-    function decrement(Counter storage counter) internal {
-        uint256 value = counter._value;
-        require(value > 0, "Counter: decrement overflow");
-        unchecked {
-            counter._value = value - 1;
-        }
-    }
-
-    function reset(Counter storage counter) internal {
-        counter._value = 0;
-    }
-}
-
 // File: contracts/GameToken.sol
 
 pragma solidity ^0.8.17;
 
+struct BodyPart 
+    {
+        uint8 id;
+        uint8 part; // head,body,left-hand,right-hand,left-foot,right-foot,eyes,mouse,horns
+        uint8 level;
+        uint8 rarity;
+    }
 
-struct Token 
-{
-    uint256 parent1; 
-    uint256 parent2; 
-    uint256 genes;
-    uint256 generation;
-    uint8 charge;
-}
+struct Cryptoshopee
+    {
+        //mapping (uint8 => BodyPart) parts;
+        uint32 parent1;
+        uint32 parent2;
+        uint32 generation;
+        uint8 charge;
+        //mapping (uint8 => BodyPart) parts;
+        BodyPart[] parts;
+    }
 
-contract GameToken is ERC721, Ownable, ERC2771Recipient {
+contract ATB_TOKEN_2 is ERC721, Ownable, ERC2771Recipient {
     using Strings for uint256;
-    using Counters for Counters.Counter;
-
     
-    mapping(uint256 => Token) private Tokens;
-
-    Counters.Counter private _currTokenId;
+    Cryptoshopee[] Cryptoshopees;
     address private _CoinContract;
     address private _BreedScience; 
 
@@ -1702,58 +1678,54 @@ contract GameToken is ERC721, Ownable, ERC2771Recipient {
     string private _baseExtension = ".json";
 
     constructor() ERC2771Recipient() ERC721("ATBToken", "ATBT") {
-        Counters.increment(_currTokenId);
     }
     
-    // цей метод має викликатись сервером для створення НФТ при скануванні QR- коду. 
-    function Mint(uint256 _genes, uint8 _charge) external onlyOwner returns(uint256){
-        return(CreateToken(0, 0, 0, _genes, _charge));
-    }
-
-    function CreateToken(uint256 _parent1, uint256 _parent2, uint256 _generation, uint256 _genes, uint8 _charge) internal returns(uint256) {
-        Token memory _token = Token(
-            {
-                parent1: _parent1,
-                parent2: _parent2,
-                genes: _genes,
-                generation: _generation,
-                charge: _charge
-            });
-
-        uint256 tokenId = Counters.current(_currTokenId);
-        Tokens[tokenId] = _token;
-        _mint(owner(), tokenId);
-
-        Counters.increment(_currTokenId);
+    function mintWithTraits(BodyPart[] memory _parts, uint8 _charge, uint32 _generation) external onlyOwner {
         
-        return tokenId;
+        Cryptoshopee storage _cryptoshopee = Cryptoshopees[Cryptoshopees.length];
+         _cryptoshopee.parent1 = 0;
+         _cryptoshopee.parent2 = 0;
+         _cryptoshopee.generation = _generation;
+         _cryptoshopee.charge = _charge;
+
+        for (uint256 i = 0; i < _parts.length - 1; i++)
+        {
+            _cryptoshopee.parts.push(_parts[i]);
+        }
+        //Cryptoshopees.push(Cryptoshopee(0, 0,_generation, _charge, _parts));
+
+        //Cryptoshopees.push(_cryptoshopee);
     } 
 
-    function Breeding(uint256 token1, uint256 token2) external onlyOwner returns(uint256 _newTokenId) {
-        // Якщо в ми ніде не зберігаємо власника токена в контракті, то неможливо перевірити в контракті чи він має право робити бридінг!
-        Token storage mom = Tokens[token1];
-        Token storage dad = Tokens[token2];
+    function getCryptoshopees(uint256 _id) public returns (Cryptoshopee memory)
+    {
+        if (Cryptoshopees.length == 0)
+        {
+            BodyPart[] memory _bodyParts;
+           
+            _bodyParts[0].id = 1;
+            _bodyParts[0].part = 1;
+            _bodyParts[0].level = 1;
+            _bodyParts[0].rarity = 0;
 
-        uint256 generation = (mom.generation + dad.generation) / 2 + 1;
-        
-        uint256 _newGenes = IBreedScience(_BreedScience).breading(mom.genes, dad.genes, generation);
-        
-        _newTokenId = CreateToken(token1, token2, generation, _newGenes, 1);
+            _bodyParts[1].id = 6;
+            _bodyParts[1].part = 2;
+            _bodyParts[1].level = 3;
+            _bodyParts[1].rarity = 1;
+            
+            Cryptoshopee storage _cryptoshopee = Cryptoshopees[Cryptoshopees.length];
+            
+            _cryptoshopee.parent1 = 0;
+            _cryptoshopee.parent2 = 0;
+            _cryptoshopee.generation = 0;
+            _cryptoshopee.charge = 3;
 
-        mom.charge = 0;
-        dad.charge = 0;
+            _cryptoshopee.parts.push(_bodyParts[0]);
+            _cryptoshopee.parts.push(_bodyParts[1]);
+            return _cryptoshopee;
+        }
 
-        return _newTokenId;
-    }
-
-    function ChargeNFT(uint256 _tokenId, uint8 value) external onlyOwner {
-        require(_exists(_tokenId));
-        
-        Token storage _token = Tokens[_tokenId]; 
-        
-        IATBCoin(_CoinContract).burn(value);
-        
-        _token.charge = value;
+        return Cryptoshopees[_id];
     }
 
     function setBaseExtension(string memory extension) external onlyOwner { 
@@ -1765,7 +1737,7 @@ contract GameToken is ERC721, Ownable, ERC2771Recipient {
     }
     
     function totalSupply() external view returns (uint256) {
-        return Counters.current(_currTokenId) - 1;
+        return Cryptoshopees.length - 1;
     }
 
     function contractURI() external view returns (string memory) {
@@ -1809,18 +1781,4 @@ contract GameToken is ERC721, Ownable, ERC2771Recipient {
     {
         return ERC2771Recipient._msgData();
     }
-}
-
-interface IATBCoin
-{
-    function mint(uint256 amount) external returns (bool);
-    function burn(uint256 amount) external returns (bool);
-}
-
-interface IBreedScience {
-    /// @dev given genes of token 1 & 2, return a genetic combination - may have a random factor
-    /// @param genes1 genes of mom
-    /// @param genes2 genes of dad
-    /// @return the genes that are supposed to be passed down the child
-    function breading(uint256 genes1, uint256 genes2, uint256 generation) public returns(uint256);
 }
