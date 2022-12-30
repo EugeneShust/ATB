@@ -33,10 +33,10 @@ namespace NFTService.Controllers
                     Charge = charge
                 };
 
-                var mintEvent = _sender.NFT.ContractHandler.GetEvent<WasBornEventDTO>();
 
                 var receipt = await _sender.NFT.MintRequestAndWaitForReceiptAsync(message);
-                
+
+                var mintEvent = _sender.NFT.ContractHandler.GetEvent<WasBornEventDTO>();
                 var filterInput = mintEvent.CreateFilterInput(new BlockParameter(receipt.BlockNumber), BlockParameter.CreateLatest());
                 var logs = await mintEvent.GetAllChangesAsync(filterInput);
 

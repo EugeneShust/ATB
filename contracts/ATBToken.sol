@@ -1,8 +1,4 @@
-﻿/**
- *Submitted for verification at polygonscan.com on 2022-12-30
-*/
-
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // File: @opengsn/contracts/src/interfaces/IERC2771Recipient.sol
 
 
@@ -1733,6 +1729,7 @@ contract ATBToken is ERC721, Ownable, ERC2771Recipient {
 
         Tokens[tokenId] = _token;
         _safeMint(owner(), tokenId);
+        
         emit WasBorn(tokenId, _parent1, _parent2, _genes);
 
         return tokenId;
