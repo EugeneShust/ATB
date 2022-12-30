@@ -2,7 +2,15 @@
 
 pragma solidity ^0.8.17;
 
-contract BreedScience 
+interface IBreeding {
+    /// @dev given genes of token 1 & 2, return a genetic combination - may have a random factor
+    /// @param genes1 genes of mom
+    /// @param genes2 genes of dad
+    /// @return the genes that are supposed to be passed down the child
+    function breading(uint256 genes1, uint256 genes2, uint256 generation) external returns(uint256);
+}
+
+contract Breeding is IBreeding
 {
     uint256 private GlobalSeed = 1;
     uint256 private randomSideWeight = 50;
@@ -143,21 +151,5 @@ contract BreedScience
     function weight(uint256 i) internal view returns(uint256)
     {
         return i == 2 ? randomIdWeight : randomSideWeight;
-    }
-
-    function testRandom() public returns(uint256[] memory array)
-    {
-        array = new  uint256[](4);
-        uint256 randomSeed = uint256(keccak256(abi.encodePacked(block.timestamp, block.number, block.difficulty, GlobalSeed))); 
-        uint256 randomIndex;
-
-        array[0] = random(randomSeed, randomIndex++, 0, 100);
-        array[1] = random(randomSeed, randomIndex++, 0, 100);
-        array[2] = random(randomSeed, randomIndex++, 0, 100);
-        array[3] = random(randomSeed, randomIndex++, 0, 100);
-
-        GlobalSeed++;
-
-        return array;
     }
 }
