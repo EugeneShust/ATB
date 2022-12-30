@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // File: @opengsn/contracts/src/interfaces/IERC2771Recipient.sol
 
 
@@ -1643,35 +1643,62 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     ) internal virtual {}
 }
 
+
+library Counters {
+    struct Counter {
+        uint256 _value; // default: 0
+    }
+
+    function current(Counter storage counter) internal view returns (uint256) {
+        return counter._value;
+    }
+
+    function increment(Counter storage counter) internal {
+        unchecked {
+            counter._value += 1;
+        }
+    }
+
+    function decrement(Counter storage counter) internal {
+        uint256 value = counter._value;
+        require(value > 0, "Counter: decrement overflow");
+        unchecked {
+            counter._value = value - 1;
+        }
+    }
+
+    function reset(Counter storage counter) internal {
+        counter._value = 0;
+    }
+}
+
 // File: contracts/GameToken.sol
 
 pragma solidity ^0.8.17;
 
-struct BodyPart 
-    {
-        uint8 id;
-        uint8 part; // head,body,left-hand,right-hand,left-foot,right-foot,eyes,mouse,horns
-        uint8 level;
-        uint8 rarity;
-    }
-
-struct Cryptoshopee
-    {
-        //mapping (uint8 => BodyPart) parts;
-        uint32 parent1;
-        uint32 parent2;
-        uint32 generation;
-        uint8 charge;
-        //mapping (uint8 => BodyPart) parts;
-        BodyPart[] parts;
-    }
-
-contract ATB_TOKEN_2 is ERC721, Ownable, ERC2771Recipient {
+contract ATBToken is ERC721, Ownable, ERC2771Recipient {
     using Strings for uint256;
+    using Counters for Counters.Counter;
+
+    event WasBorn(uint256 tokenId, uint256 parent1, uint256 parent2, uint256 genes);
+    event Charged(uint256 tokenId, uint8 charge);
+
+    Counters.Counter private _currTokenId;
+    uint8 private _breedingPrice;
     
-    Cryptoshopee[] Cryptoshopees;
-    address private _CoinContract;
-    address private _BreedScience; 
+    struct Token 
+    {
+        uint256 parent1; 
+        uint256 parent2; 
+        uint256 genes;
+        uint256 generation;
+        uint8 charge;
+    }
+
+    mapping(uint256 => Token) private Tokens;
+
+    address private _coinContract;
+    address private _breedingContract; 
 
     string private _contractURI;
     string private _baseURI;
@@ -1680,54 +1707,78 @@ contract ATB_TOKEN_2 is ERC721, Ownable, ERC2771Recipient {
     constructor() ERC2771Recipient() ERC721("ATBToken", "ATBT") {
     }
     
-    function mintWithTraits(BodyPart[] memory _parts, uint8 _charge, uint32 _generation) external onlyOwner {
-        
-        Cryptoshopee storage _cryptoshopee = Cryptoshopees[Cryptoshopees.length];
-         _cryptoshopee.parent1 = 0;
-         _cryptoshopee.parent2 = 0;
-         _cryptoshopee.generation = _generation;
-         _cryptoshopee.charge = _charge;
-
-        for (uint256 i = 0; i < _parts.length - 1; i++)
-        {
-            _cryptoshopee.parts.push(_parts[i]);
-        }
-        //Cryptoshopees.push(Cryptoshopee(0, 0,_generation, _charge, _parts));
-
-        //Cryptoshopees.push(_cryptoshopee);
-    } 
-
-    function getCryptoshopees(uint256 _id) public returns (Cryptoshopee memory)
-    {
-        if (Cryptoshopees.length == 0)
-        {
-            BodyPart[] memory _bodyParts;
-           
-            _bodyParts[0].id = 1;
-            _bodyParts[0].part = 1;
-            _bodyParts[0].level = 1;
-            _bodyParts[0].rarity = 0;
-
-            _bodyParts[1].id = 6;
-            _bodyParts[1].part = 2;
-            _bodyParts[1].level = 3;
-            _bodyParts[1].rarity = 1;
-            
-            Cryptoshopee storage _cryptoshopee = Cryptoshopees[Cryptoshopees.length];
-            
-            _cryptoshopee.parent1 = 0;
-            _cryptoshopee.parent2 = 0;
-            _cryptoshopee.generation = 0;
-            _cryptoshopee.charge = 3;
-
-            _cryptoshopee.parts.push(_bodyParts[0]);
-            _cryptoshopee.parts.push(_bodyParts[1]);
-            return _cryptoshopee;
-        }
-
-        return Cryptoshopees[_id];
+    // цей метод має викликатись сервером для створення НФТ при скануванні QR- коду. 
+    /// @param _genes гени токену з картки
+    /// @param _charge заряд токена для 0 генерації
+    function Mint(uint256 _genes, uint8 _charge) external onlyOwner returns(uint256) {
+        return(CreateToken(0, 0, 0, _genes, _charge));
     }
 
+    function CreateToken(uint256 _parent1, uint256 _parent2, uint256 _generation, uint256 _genes, uint8 _charge) internal returns(uint256) {
+        Token memory _token = Token(
+            {
+                parent1: _parent1,
+                parent2: _parent2,
+                genes: _genes,
+                generation: _generation,
+                charge: _charge
+            });
+        
+        Counters.increment(_currTokenId);
+        uint256 tokenId = Counters.current(_currTokenId);
+
+        Tokens[tokenId] = _token;
+        _safeMint(owner(), tokenId);
+        emit WasBorn(tokenId, _parent1, _parent2, _genes);
+
+        return tokenId;
+    } 
+
+    /// Створення нового покоління токену. 
+    function Breeding(uint256 token1, uint256 token2) external onlyOwner returns(uint256 _newTokenId) {
+        require(_exists(token1), "query for nonexistent token");
+        require(_exists(token2), "query for nonexistent token");
+        //WARNING: Якщо в ми ніде не зберігаємо власника токена в контракті, то неможливо перевірити в контракті чи він має право робити бридінг!
+        Token storage mom = Tokens[token1];
+        Token storage dad = Tokens[token2];
+
+        // TODO: Або ж логіку можна задати як сумму енергії баться і мами, або в залежності від генерації задати массив вартостей         
+        require(mom.charge >= _breedingPrice, "insufficient charge");
+        require(dad.charge >= _breedingPrice, "insufficient charge");
+
+        // Визначення генерації виніс сюди, щоб не тягати дві змінні в інший контракт, якщо треба, то можна перемістити в IBreeding
+        uint256 generation = (mom.generation + dad.generation) / 2 + 1;
+        uint256 _newGenes = IBreeding(_breedingContract).breading(mom.genes, dad.genes, generation);
+        
+        _newTokenId = CreateToken(token1, token2, generation, _newGenes, 1);
+
+        mom.charge -= _breedingPrice;
+        dad.charge -= _breedingPrice;
+
+        return _newTokenId;
+    }
+
+    // TODO: Можна цей метод продублювати з можливістю оплатити валютою мережі
+    function Charge(uint256 tokenId, uint8 value) external onlyOwner {
+        require(_exists(tokenId), "query for nonexistent token");
+        
+        IATBCoin(_coinContract).pay(value);
+
+        Tokens[tokenId].charge += value; 
+        
+        emit Charged(tokenId, value);
+    }
+
+    // geters
+    function totalSupply() external view returns (uint256) {
+        return Counters.current(_currTokenId);
+    }
+
+    function contractURI() external view returns (string memory) {
+        return _contractURI;
+    } 
+    
+    // setters
     function setBaseExtension(string memory extension) external onlyOwner { 
         _baseExtension = extension;
     }
@@ -1736,28 +1787,26 @@ contract ATB_TOKEN_2 is ERC721, Ownable, ERC2771Recipient {
         _contractURI = URI;
     }
     
-    function totalSupply() external view returns (uint256) {
-        return Cryptoshopees.length - 1;
-    }
-
-    function contractURI() external view returns (string memory) {
-        return _contractURI;
-    } 
-
     function setBaseURI(string memory URI) external onlyOwner {
         _baseURI = URI;
     }
 
-    function setCoinContract(address CoinContract) public onlyOwner
+    function setCoinContract(address coinContract) public onlyOwner
     {
-        _CoinContract = CoinContract;
+        _coinContract = coinContract;
     }
 
-    function setBreedScience(address BreedScience) public onlyOwner
+    function setBreedingContract(address breedingContract) public onlyOwner
     {
-        _BreedScience = BreedScience;
+        _breedingContract = breedingContract;
     }
 
+    function setBreedingPrice(uint8 breedingPrice) public onlyOwner
+    {
+        _breedingPrice = breedingPrice;
+    }
+
+    // 
     function tokenURI(uint256 tokenId) public view virtual override returns(string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token"); 
         return string(abi.encodePacked(_baseURI, tokenId.toString(), _baseExtension));    
@@ -1781,4 +1830,18 @@ contract ATB_TOKEN_2 is ERC721, Ownable, ERC2771Recipient {
     {
         return ERC2771Recipient._msgData();
     }
+}
+
+interface IATBCoin
+{
+    function mint(uint256 amount) external returns (bool);
+    function pay(uint256 amount) external returns (bool);
+}
+
+interface IBreeding {
+    /// @dev given genes of token 1 & 2, return a genetic combination - may have a random factor
+    /// @param genes1 genes of mom
+    /// @param genes2 genes of dad
+    /// @return the genes that are supposed to be passed down the child
+    function breading(uint256 genes1, uint256 genes2, uint256 generation) external returns(uint256);
 }
