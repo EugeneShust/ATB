@@ -634,6 +634,23 @@ interface IATBCoin
 
 contract ATBCoin is ERC20, Ownable, IATBCoin {
     bool private saveCoin;
+        
+    address[] private _payers;
+    
+    modifier onlyPayer() {
+        address _payer = address(0);
+        
+        bool flag = false;
+        
+        for(uint i = 0; i < _payers.length; i++)
+            if (_payers[i] == msg.sender)
+            { 
+                flag = true;    
+            }
+
+        require(flag, "onlyTokenContract""Ownable: caller is not the payer");
+        _;
+    }
 
     constructor() ERC20("ATBCoin","ATBC") {
     } 
@@ -641,8 +658,22 @@ contract ATBCoin is ERC20, Ownable, IATBCoin {
     function mint(uint256 amount) external onlyOwner {
         _mint(owner(), amount);
     }
-    
-    function pay(uint256 amount) external onlyOwner {
+
+    function pay(uint256 amount) external onlyPayer {
         _burn(owner(), amount);
+    }
+
+    function addPayer(address payer) external onlyOwner {
+        _payers.push(payer);
+    }
+
+    function removePayer(address payer) external onlyOwner {
+        for(uint i = 0; i < _payers.length; i++)
+            if (payer == _payers[i])
+                delete _payers[i];
+    }
+
+    function getPayers() external view returns(address[] memory) {
+        return _payers;
     }
 }

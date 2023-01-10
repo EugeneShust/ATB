@@ -77,6 +77,19 @@
 		"inputs": [
 			{
 				"internalType": "address",
+				"name": "payer",
+				"type": "address"
+			}
+		],
+		"name": "addPayer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
 				"name": "owner",
 				"type": "address"
 			},
@@ -178,6 +191,19 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getPayers",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "",
+				"type": "address[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -249,6 +275,19 @@
 			}
 		],
 		"name": "pay",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "payer",
+				"type": "address"
+			}
+		],
+		"name": "removePayer",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

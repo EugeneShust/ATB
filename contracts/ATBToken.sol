@@ -1835,8 +1835,8 @@ contract ATBToken is ERC721, Ownable, ERC2771Recipient {
 
 interface IATBCoin
 {
-    function mint(uint256 amount) external returns (bool);
-    function pay(uint256 amount) external returns (bool);
+    function mint(uint256 amount) external;
+    function pay(uint256 amount) external;
 }
 
 interface IBreeding {

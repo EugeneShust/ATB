@@ -48,6 +48,32 @@ namespace NFTService.ATBCoin
             ContractHandler = web3.Eth.GetContractHandler(contractAddress);
         }
 
+        public Task<string> AddPayerRequestAsync(AddPayerFunction addPayerFunction)
+        {
+             return ContractHandler.SendRequestAsync(addPayerFunction);
+        }
+
+        public Task<TransactionReceipt> AddPayerRequestAndWaitForReceiptAsync(AddPayerFunction addPayerFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addPayerFunction, cancellationToken);
+        }
+
+        public Task<string> AddPayerRequestAsync(string payer)
+        {
+            var addPayerFunction = new AddPayerFunction();
+                addPayerFunction.Payer = payer;
+            
+             return ContractHandler.SendRequestAsync(addPayerFunction);
+        }
+
+        public Task<TransactionReceipt> AddPayerRequestAndWaitForReceiptAsync(string payer, CancellationTokenSource cancellationToken = null)
+        {
+            var addPayerFunction = new AddPayerFunction();
+                addPayerFunction.Payer = payer;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(addPayerFunction, cancellationToken);
+        }
+
         public Task<BigInteger> AllowanceQueryAsync(AllowanceFunction allowanceFunction, BlockParameter blockParameter = null)
         {
             return ContractHandler.QueryAsync<AllowanceFunction, BigInteger>(allowanceFunction, blockParameter);
@@ -142,6 +168,17 @@ namespace NFTService.ATBCoin
                 decreaseAllowanceFunction.SubtractedValue = subtractedValue;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(decreaseAllowanceFunction, cancellationToken);
+        }
+
+        public Task<List<string>> GetPayersQueryAsync(GetPayersFunction getPayersFunction, BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetPayersFunction, List<string>>(getPayersFunction, blockParameter);
+        }
+
+        
+        public Task<List<string>> GetPayersQueryAsync(BlockParameter blockParameter = null)
+        {
+            return ContractHandler.QueryAsync<GetPayersFunction, List<string>>(null, blockParameter);
         }
 
         public Task<string> IncreaseAllowanceRequestAsync(IncreaseAllowanceFunction increaseAllowanceFunction)
@@ -244,6 +281,32 @@ namespace NFTService.ATBCoin
                 payFunction.Amount = amount;
             
              return ContractHandler.SendRequestAndWaitForReceiptAsync(payFunction, cancellationToken);
+        }
+
+        public Task<string> RemovePayerRequestAsync(RemovePayerFunction removePayerFunction)
+        {
+             return ContractHandler.SendRequestAsync(removePayerFunction);
+        }
+
+        public Task<TransactionReceipt> RemovePayerRequestAndWaitForReceiptAsync(RemovePayerFunction removePayerFunction, CancellationTokenSource cancellationToken = null)
+        {
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(removePayerFunction, cancellationToken);
+        }
+
+        public Task<string> RemovePayerRequestAsync(string payer)
+        {
+            var removePayerFunction = new RemovePayerFunction();
+                removePayerFunction.Payer = payer;
+            
+             return ContractHandler.SendRequestAsync(removePayerFunction);
+        }
+
+        public Task<TransactionReceipt> RemovePayerRequestAndWaitForReceiptAsync(string payer, CancellationTokenSource cancellationToken = null)
+        {
+            var removePayerFunction = new RemovePayerFunction();
+                removePayerFunction.Payer = payer;
+            
+             return ContractHandler.SendRequestAndWaitForReceiptAsync(removePayerFunction, cancellationToken);
         }
 
         public Task<string> RenounceOwnershipRequestAsync(RenounceOwnershipFunction renounceOwnershipFunction)
