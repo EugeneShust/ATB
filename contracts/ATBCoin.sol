@@ -1,7 +1,8 @@
 ﻿/**
- *Submitted for verification at Etherscan.io on 2022-12-14
+ *Submitted for verification at polygonscan.com on 2022-12-30
 */
 
+// SPDX-License-Identifier: MIT
 // File: @openzeppelin/contracts/utils/Context.sol
 
 
@@ -627,22 +628,21 @@ pragma solidity ^0.8.17;
 
 interface IATBCoin
 {
-    function mint(uint256 amount) external returns (bool);
-    function pay(uint256 amount) external returns (bool);
+    function mint(uint256 amount) external;
+    function pay(uint256 amount) external;
 }
 
 contract ATBCoin is ERC20, Ownable, IATBCoin {
-    constructor() ERC20("ATBCoin","ATBC"){
+    bool private saveCoin;
+
+    constructor() ERC20("ATBCoin","ATBC") {
     } 
 
-    function mint(uint256 amount) public onlyOwner returns (bool)
-    {
+    function mint(uint256 amount) external onlyOwner {
         _mint(owner(), amount);
-        return true;
     }
     
-    function pay(uint256 amount) public virtual returns (bool) {
+    function pay(uint256 amount) external onlyOwner {
         _burn(owner(), amount);
-        return true;
     }
 }

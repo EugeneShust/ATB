@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Nethereum.RPC.Eth.DTOs;
 using NFTService.Blockchain;
 using NFTService.ATBCoin.ContractDefinition;
+using Nethereum.Contracts;
+using Nethereum.Util;
+using Nethereum.RPC.NonceServices;
 
 namespace NFTService.Controllers
 {
@@ -20,31 +23,51 @@ namespace NFTService.Controllers
             _sender = sender;
             _logger = logger;
             _configuration = configuration;
+
         }
 
         [HttpPost("mint")]
         public async Task<TransactionReceipt> Mint(string amount)
         {
-            var message = new MintFunction
+            try
             {
-                Amount = BigInteger.Parse(amount)
-            };
+                var mint = new MintFunction
+                {
+                    Amount = BigInteger.Parse(amount),
+                    Nonce = await _sender.Account.NonceService.GetNextNonceAsync()
+                };
 
-            var receipt = await _sender.Coin.MintRequestAndWaitForReceiptAsync(message);
+                // скільки газу коштує транзакція
+                //mint.Gas = await _sender.Coin.ContractHandler.EstimateGasAsync(mint);
 
-            var mintEvent = _sender.Coin.ContractHandler.GetEvent<TransferEventDTO>();
-            var filterInput = mintEvent.CreateFilterInput(new BlockParameter(receipt.BlockNumber), BlockParameter.CreateLatest());
-            var logs = await mintEvent.GetAllChangesAsync(filterInput);
+                // Ціна за одиницю газу - наприклад 38881 газу коштує транзакція => 38881*0.00000025
+                //mint.GasPrice = Nethereum.Web3.Web3.Convert.ToWei(25, UnitConversion.EthUnit.Gwei);
 
-            foreach (var log in logs)
-            {
-                Console.WriteLine("logs" + log.Event.From);
-                Console.WriteLine("logs" + log.Event.To);
-                Console.WriteLine("logs" + log.Event.Value);
-                // TODO ось тут треба нарахувати монети, але я тупо не розумію як хендлити кому їх нараховувати
+                // mint.MaxFeePerGas = Nethereum.Web3.Web3.Convert.ToWei(25, UnitConversion.EthUnit.Gwei);
+
+                // надбавка майнеру для швидшої обробки транзакції
+                // mint.MaxPriorityFeePerGas = Nethereum.Web3.Web3.Convert.ToWei(25, UnitConversion.EthUnit.Gwei);
+
+                var receipt = await _sender.Coin.MintRequestAndWaitForReceiptAsync(mint);
+                
+                var eventLogs = receipt.DecodeAllEvents<TransferEventDTO>();
+  
+                foreach (var log in eventLogs)
+                {
+                    _logger.LogInformation("From:" + log.Event.From);
+                    _logger.LogInformation("To:" + log.Event.To);
+                    _logger.LogInformation("Value:" + log.Event.Value);
+
+                    // TODO ось тут треба нарахувати монети на балланс користувача.
+                }
+
+                return receipt;
             }
-
-            return receipt;
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
     }
 }
